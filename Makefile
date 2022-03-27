@@ -119,3 +119,15 @@ mkcode: watcom/mkcode.c
 	cp JWasm.build/build/GccUnixR/jwasm $@.tmp
 	mv $@.tmp $@
 .PRECIOUS: ./jwasm
+
+./jwlink:
+	$(RM) -r JWlink.build
+	$(GIT) submodule update
+	cp -a JWlink.src JWlink.build
+	$(MAKE) -C JWlink.build/dwarf/dw -f GccUnix.mak
+	$(MAKE) -C JWlink.build/orl -f GccUnix.mak
+	$(MAKE) -C JWlink.build/sdk/rc/wres -f GccUnix.mak
+	$(MAKE) -C JWlink.build -f GccUnix.mak
+	cp JWlink.build/GccUnixR/jwlink $@.tmp
+	mv $@.tmp $@
+.PRECIOUS: ./jwlink

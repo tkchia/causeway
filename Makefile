@@ -34,11 +34,16 @@ CWSRCS = $(CWMAIN) source/all/raw_vcpi.asm source/all/interrup.asm \
 	 source/all/ldt.asm source/all/memory.asm source/all/api.asm \
 	 source/all/int10h.asm source/all/int21h.asm source/all/int33h.asm \
 	 source/all/decode_c.asm source/all/exceptn.asm \
-	 source/all/loadle/loadle.asm
-CWINCS = source/all/strucs.inc source/all/cw.inc
-CWDEPS = $(CWSRCS) $(CWINCS)
+	 source/all/loadle/loadle.asm \
+	 source/all/strucs.inc source/all/cw.inc
+CWDEPS = $(CWSRCS)
 
 CWCDEPS =
+
+CWLMAIN	= source/all/cwl/cwl.asm
+CWLOBJ	= $(CWLMAIN:.asm=.o)
+CWLSRCS	= $(CWLMAIN) source/all/cwl/cwl.inc
+CWLDEPS	= $(CWLSRCS)
 
 # If we already have JWasm &/or JWlink installed, use those.  Otherwise
 # download & build JWasm &/or JWlink.
@@ -49,11 +54,13 @@ else
     ASM = ./jwasm
     CWDEPS += $(ASM)
     CWCDEPS += $(ASM)
+    CWLDEPS += $(ASM)
 endif
 ifneq "" "$(shell jwlink '-?' 2>/dev/null)"
     LINK = jwlink
 else
     LINK = ./jwlink
+    CWLDEPS += $(LINK)
 endif
 RM = rm -f
 
@@ -89,6 +96,17 @@ cwstub.exe: cw32.exe cwc
 	./cwc $< $@.tmp
 	mv $@.tmp $@
 .PRECIOUS: cwstub.exe
+
+cwl.exe: $(CWLOBJ) cwstub.exe
+	$(LINK) format os2 le op stub=cwstub.exe file $< name $@.tmp
+	mv $@.tmp $@
+
+$(CWLOBJ): $(CWLMAIN) $(CWLDEPS)
+
+%.o: %.asm
+	$(ASM) -DENGLISH=1 -DCONTRIB=1 -Fo$@.tmp -Fl$(@:.o=.lst) $<
+	mv $@.tmp $@
+.PRECIOUS: %.o
 
 %.gh: %.com mkcode
 	./mkcode -b $< $@.tmp

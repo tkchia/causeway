@@ -3,4 +3,4 @@
 	url = https://github.com/Baron-von-Riedesel/JWasm.git
 [submodule "JWlink.src"]
 	path = JWlink.src
-	url = https://github.com/JWasm/JWlink.git
+	url = https://gitlab.com/tkchia/JWlink.git

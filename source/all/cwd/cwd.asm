@@ -12,7 +12,7 @@
 
 	include equates.asm
 	include macros.asm
-	include ..\strucs.inc
+	include ../strucs.inc
 
 
 	.code

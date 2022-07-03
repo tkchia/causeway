@@ -24,7 +24,7 @@ SPANISH	equ	0
 
 	include macros.inc
 
-	include ..\cw.inc
+	include ../cw.inc
 
 MaxBreaks	equ	256
 MaxEIPs	equ	4096
@@ -34,7 +34,7 @@ MaxLineLength	equ	1024	;Maximum source line length.
 
 RetStackSize	equ	64
 
-	include ..\strucs.inc
+	include ../strucs.inc
 	include disas.inc
 
 ;

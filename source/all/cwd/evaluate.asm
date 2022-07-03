@@ -701,7 +701,7 @@ EvaluateData	proc	near
 	movsd
 	movsd			;shift the result!
 	lea	esi,EvaluateBuffer
-	test	w[esi+4],1 shl 31
+	test	d[esi+4],1 shl 31
 	jnz	@@CheckNeg
 	mov	eax,[esi]
 	and	eax,VarSizeMask

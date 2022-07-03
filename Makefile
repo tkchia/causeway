@@ -45,6 +45,21 @@ CWLOBJ	= $(CWLMAIN:.asm=.o)
 CWLSRCS	= $(CWLMAIN) source/all/cwl/cwl.inc
 CWLDEPS	= $(CWLSRCS)
 
+CWDMAIN	= source/all/cwd/cwd.asm
+CWDSRCS	= $(CWDMAIN) source/all/cwd/equates.asm source/all/cwd/macros.asm \
+	  source/all/strucs.inc
+CWDDEPS	= $(CWDSRCS)
+
+CWDVMAIN = source/all/cwd/cwd-ovl.asm
+CWDVOBJ  = $(CWDVMAIN:.asm=.o)
+CWDVSRCS = $(CWDVMAIN) source/all/cwd/macros.inc source/all/cw.inc \
+	   source/all/strucs.inc source/all/cwd/disas.inc \
+	   source/all/cwd/generr.asm source/all/cwd/files.asm \
+	   source/all/cwd/print.asm source/all/cwd/getkeys.asm \
+	   source/all/cwd/win.asm source/all/cwd/evaluate.asm \
+	   source/all/cwd/disas.asm source/all/cwd/fpu.asm
+CWDVDEPS = $(CWDVSRCS)
+
 # If we already have JWasm &/or the Watcom Linker (wlink) &/or JWlink
 # installed, use those.  Otherwise, download & build JWasm & JWlink.
 # JWlink is used for bootstrapping the CauseWay Linker (TODO).
@@ -56,6 +71,8 @@ else
     CWDEPS += $(ASM)
     CWCDEPS += $(ASM)
     CWLDEPS += $(ASM)
+    CWDDEPS += $(ASM)
+    CWDVDEPS += $(ASM)
 endif
 ifneq "" "$(shell wlink '-?' 2>/dev/null </dev/null)"
     LINK = wlink
@@ -93,16 +110,23 @@ endef
 define cw-compress
 	cp "$3" "$4"
 	$(call run-dos,$(subst /,\\,$1) $2 $(subst /,\\,$4))
+	# Ugh.  Under dosbox, we get CWC.EXE & CWD.OVL instead of cwc.exe &
+	# cwd.ovl.  dosemu is OK though.
+	if test -f $4; \
+	then	:; \
+	else	u="`export LC_ALL=C && echo $4 | tr a-z A-Z`"; \
+		mv "$$u" $4; \
+	fi
 	test -s "$4" -a "`LC_ALL=C wc -c <$4`" -lt "`LC_ALL=C wc -c <$3`" || \
 	    ($(RM) "$4" && exit 1)
 endef
 
 # Various phony targets.
 
-default: cwc-wat cwstub.exe cwl.exe
+default: cwc-wat cwstub.exe cwl.exe cwd.exe cwd.ovl
 .PHONY: default
 
-install: cwc-wat cwstub.exe cwl.exe
+install: cwc-wat cwstub.exe cwl.exe cwd.exe cwd.ovl
 	$(INSTALL) -d $(DESTDIR)$(bindir) $(DESTDIR)$(bindir2)
 	$(INSTALL) $^ $(DESTDIR)$(bindir)
 	$(RM) -r $(^:%=$(DESTDIR)$(bindir2)/%)
@@ -115,9 +139,9 @@ clean: mostlyclean
 .PHONY: clean
 
 mostlyclean:
-	$(RM) -r *.o *.obj *.exe *.com *.gh *.map *.sym *.lst *.err *.tmp \
-		 mkcode cwc-wat copystub.inc decstub.inc *~ source/all/*~ \
-		 source/all/*/*.o source/all/*/*~
+	$(RM) -r *.o *.obj *.exe *.com *.ovl *.gh *.map *.sym *.lst *.err \
+		 *.tmp mkcode cwc-wat copystub.inc decstub.inc *~ \
+		 source/all/*~ source/all/*/*.o source/all/*/*~
 .PHONY: mostlyclean
 
 # Various pattern rules.
@@ -193,11 +217,35 @@ cwc.exe: cwc-pre.exe
 	$(call cw-compress,cwc-pre.exe,/l245,cwc-pre.exe,cwc.exe)
 .PRECIOUS: cwc.exe
 
-cwc-pre.exe: source/all/cwc/cwc.o cwl.exe
+cwc-pre.exe: source/all/cwc/cwc.o cw.lib cwl.exe
 	$(call cw-link,cwl.exe,/flat,$<,$@,$(@:.exe=.map))
-.PRECIOUS: cwc-medp.exe
+.PRECIOUS: cwc-pre.exe
 
 source/all/cwc/cwc.o: source/all/cwc/cwc.asm copystub.inc decstub.inc
+
+# Rules to build the CauseWay debugger driver executable.
+cwd.exe: $(CWDDEPS)
+	$(ASM) -mz -DENGLISH=1 -DCONTRIB=1 -Fo$@.tmp -Fl$(@:.exe=.lst) \
+	    $(CWDMAIN)
+	mv $@.tmp $@
+.PRECIOUS: cwd.exe
+
+# Rules to build the CauseWay debugger overlay file.
+cwd.ovl: cwd-pre.ovl cwc.exe
+	$(call cw-compress,cwc.exe,/l245,$<,$@)
+.PRECIOUS: cwd.ovl
+
+cwd-pre.ovl: $(CWDVOBJ) cwl.exe
+	$(call cw-link,cwl.exe,,$<,$@,$(@:.ovl=.map))
+.PRECIOUS: cwd.ovl
+
+$(CWDVOBJ): $(CWDVDEPS)
+
+# FIXME: figure out how to build this from sources!  Besides JWasm, we
+# probably need a library manager along the lines of Watcom wlib.
+cw.lib: source/all/cwlib/cw.lib
+	cp $< $@.tmp
+	mv $@.tmp $@
 
 # Rule to build JWasm.
 ./jwasm:
